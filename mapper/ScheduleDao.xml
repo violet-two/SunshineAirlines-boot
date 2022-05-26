@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="edu.wtbu.dao.ScheduleDao">
+    <!--航班计划查询-->
+    <select id="getSchedule" resultType="hashmap">
+        SELECT `schedule`.ScheduleId,
+               `schedule`.Date,
+               `schedule`.Time,
+               `schedule`.EconomyPrice,
+               `schedule`.FlightNumber,
+               `schedule`.Gate,
+               `schedule`.`Status`,
+               route.DepartureAirportIATA,
+               route.ArrivalAirportIATA,
+               DepartCity.CityName as DepartCityName,
+               ArriveCity.CityName as ArriveCityName,
+               aircraft.`Name`
+        FROM `schedule`
+                 LEFT JOIN route ON route.RouteId = `schedule`.RouteId
+                 LEFT JOIN airport AS DepartureAirport ON DepartureAirport.IATACode = route.DepartureAirportIATA
+                 LEFT JOIN airport AS ArrivalAirport ON ArrivalAirport.IATACode = route.ArrivalAirportIATA
+                 LEFT JOIN city AS DepartCity ON DepartCity.CityCode = DepartureAirport.CityCode
+                 LEFT JOIN city AS ArriveCity ON ArriveCity.CityCode = ArrivalAirport.CityCode
+                 LEFT JOIN aircraft ON aircraft.AircraftId = `schedule`.AircraftId
+        where Date BETWEEN #{startDate}
+          and #{endDate}
+          and
+            DepartCity.CityName = #{fromCity}
+          and ArriveCity.CityName = #{toCity}
+    </select>
+    <!--.航班计划状态修改-->
+    <update id="updateSchedule">
+        update `schedule`
+        set status = #{status}
+        WHERE ScheduleId = #{scheduleId}
+    </update>
+    <!--查询航班是否存在-->
+    <select id="findScheduleById" resultType="hashmap">
+        select scheduleId from schedule where scheduleId=#{scheduleId}
+    </select>
+    <!---->
+    <select id="getTicketStatistics" resultType="hashmap">
+        select
+            Year(date) as Year,
+            Month(date) as Month,
+            COUNT(DISTINCT `schedule`.ScheduleId) as FlightsAmount,
+            COUNT(ReservationId) as TicketsAmount,
+            SUM(Payment) as TicketsRevenue
+        from
+            `schedule`
+            LEFT JOIN flightreservation ON flightreservation.ScheduleId = `schedule`.ScheduleId
+        where Date BETWEEN #{startDate} and #{endDate} and status='Confirmed'
+        GROUP BY Year(date),Month(date)
+        ORDER BY Year(date),Month(date)
+    </select>
+</mapper>
+    
